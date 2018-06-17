@@ -2,6 +2,9 @@ library(magrittr)
 library(dplyr)
 library(tidyr)
 library(grid)
+library(ggplot2)
+install.packages("ggmap")
+library(ggmap)
 
 setwd("/Users/swethagarimalla/Desktop/Coursera/DataScientist/DataScientistPreReq/Course4BuildingDataVisualizationTools/")
 
@@ -67,19 +70,98 @@ select_hurricane <- function(data, starts_with="IKE", ...){
 
 
 #build geom here#
-GeomHurricane <- ggplot2::ggproto("GeomHurricane", Geom,
-                   required_aes = c("center_x", "center_y","radius_ne", "radius_nw", "radius_se", "radius_sw" ),
-                   default_aes = aes(fill = 1, color = 1, shape = 1, alpha = 1, shape = 1 ),
-                   draw_key = <a function used to draw the key in the legend>,
-                   draw_panel = function(data, panel_scales, coord) {
-                     ## Function that returns a grid grob that will 
-                     ## be plotted (this is where the real work occurs)
+
+#build ggproto
+GeomHurricane <- ggproto("GeomHurricane", Geom,
+                   required_aes = c("x", "y",
+                                    "r_ne", "r_nw", "r_se", "r_sw" ),
+                   default_aes = aes(fill = 1, color = 1, alpha = 0.5 ),
+                   draw_key = draw_key_polygon,
+                   draw_panel = function(data, panel_scales, coord, scale_radii = 1) {
+                     
+                     data <- data %>% mutate( r_ne = r_ne * 1853 * scale_radii,
+                                              r_se = r_se * 1853 * scale_radii,
+                                              r_sw = r_sw * 1853 * scale_radii,
+                                              r_nw = r_nw * 1853 * scale_radii)
+                     
+                     ## Transform the data first
+                     coords <- coord$transform(data, panel_scales)
+                     
+                     if(fill == 64)
+                       coords$alpha <- 0.25
+                     else if(fill == 50)
+                       coords$alpha <- 0.50
+                     else
+                       coords$alpha <- 1
+                     
+                     ## Construct a grid grob
+                     ne_arc <- grid::curveGrob(
+                       x1 = coord$x, y1 = coord$y + r_ne, 
+                       x2 = coord$x + r_ne, y2 = coord$y, 
+                       curvature = 1,angle = 90, 
+                       ncp = 1, shape = 0.5, square = TRUE, squareShape = 1,
+                       inflect = FALSE, arrow = NULL, open = TRUE, debug = FALSE, name = NULL, 
+                       gp = grid::gpar(alpha = coords$alpha), vp = NULL
+                     )
+                     nw_arc <- grid::curveGrob(
+                       x1 = coord$x, y1 = coord$y + r_nw, 
+                       x2 = coord$x + r_nw, y2 = coord$y, 
+                       curvature = 1,angle = 90, 
+                       ncp = 1, shape = 0.5, square = TRUE, squareShape = 1,
+                       inflect = FALSE, arrow = NULL, open = TRUE, debug = FALSE, name = NULL, 
+                       gp = grid::gpar(alpha = coords$alpha), vp = NULL
+                     )
+                     se_arc <- grid::curveGrob(
+                       x1 = coord$x, y1 = coord$y + r_se, 
+                       x2 = coord$x + r_se, y2 = coord$y, 
+                       curvature = 1,angle = 90, 
+                       ncp = 1, shape = 0.5, square = TRUE, squareShape = 1,
+                       inflect = FALSE, arrow = NULL, open = TRUE, debug = FALSE, name = NULL, 
+                       gp = grid::gpar(alpha = coords$alpha), vp = NULL
+                     )
+                     sw_arc <- grid::curveGrob(
+                       x1 = coord$x, y1 = coord$y + r_sw, 
+                       x2 = coord$x + r_sw, y2 = coord$y, 
+                       curvature = 1,angle = 90, 
+                       ncp = 1, shape = 0.5, square = TRUE, squareShape = 1,
+                       inflect = FALSE, arrow = NULL, open = TRUE, debug = FALSE, name = NULL, 
+                       gp = grid::gpar(alpha = coords$alpha), vp = NULL
+                     )
+                     
                    }
 )
 
+#build geom function
+
+geom_hurricane <- function(mapping = NULL, data = NULL, stat = "identity",
+                         position = "identity", na.rm = FALSE, 
+                         show.legend = NA, inherit.aes = TRUE, ...) {
+  ggplot2::layer(
+    geom = GeomHurricane, mapping = mapping,  
+    data = data, stat = stat, position = position, 
+    show.legend = show.legend, inherit.aes = inherit.aes,
+    params = list(na.rm = na.rm, ...)
+  )
+}
+
+##
 
 
 #run data#
 hurricane <- load_data() %>% clean_data() %>% select_hurricane("IKE")
 hurricane2 <- load_data2() %>% clean_data2() %>% select_hurricane("IKE")
 
+
+map_data <- get_map("Louisiana", zoom = 6, maptype = "toner-background")
+base_map <- ggmap(map_data, extent = "device")
+
+base_map +
+  geom_hurricane(data = katrina, aes(x = longitude, y = latitude,
+                                     r_ne = ne, r_se = se,
+                                     r_nw = nw, r_sw = sw,
+                                     fill = wind_speed,
+                                     color = wind_speed)) +
+  scale_color_manual(name = "Wind speed (kts)",
+                     values = c("red", "orange", "yellow")) +
+  scale_fill_manual(name = "Wind speed (kts)",
+                    values = c("red", "orange", "yellow"))
