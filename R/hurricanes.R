@@ -33,5 +33,7 @@ select_hurricane <- function(data, starts_with="IKE", ...){
   return(hurricane);
 }
 
+
+
 hurricane <- load_data() %>% clean_data() %>% select_hurricane("IKE")
 

@@ -1,0 +1,21 @@
+Package: CourseraDataVisualizationTools
+Type: Package
+Title: Build a geom to analyze Hurricane Data from Extended Best Track Dataset
+Version: 0.1.0
+Author: Swetha Garimalla
+Maintainer: Swetha Garimalla <swetha.garimalla@gatech.edu>
+Description: This package builds a new geom
+License: GPL-3
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 6.0.1.9000
+Imports:
+    dplyr (>= 0.7.5),
+    magrittr (>= 1.5),
+    readr (>= 1.1.1), 
+    tidyr (>= 0.8.1),
+    lubridate (>= 1.4.2)
+Suggests: knitr,
+    rmarkdown,
+    testthat
+VignetteBuilder: knitr
