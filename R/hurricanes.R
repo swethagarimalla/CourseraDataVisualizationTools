@@ -10,6 +10,26 @@ library(readr)
 
 setwd("/Users/swethagarimalla/Desktop/Coursera/DataScientist/DataScientistPreReq/Course4BuildingDataVisualizationTools/")
 
+#' Load Data
+#'
+#' This is a simple function that loads hurricane data from 
+#' http://rammb.cira.colostate.edu/research/tropical_cyclones/tc_extended_best_track_dataset/. 
+#' Using column widths and assigned colnames, the data is read in using the 
+#' \code{readr::read_fwf}.
+#'
+#' @param filename A character string giving the path and name of the file
+#' to be read in. Default value is "ebtrk_atlc_1988_2015.txt"
+#' 
+#' @return This function returns a tibble that contains the columns in the 
+#' read in file
+#' 
+#' @importFrom readr read_fwf fwf_widths
+#'
+#' @examples
+#' load_data()
+#' load_data(filename = "ebtrk_atlc_1988_2015.txt")
+#'
+#' @export
 
 load_data <- function(filename="ebtrk_atlc_1988_2015.txt", ...){
   
@@ -29,6 +49,35 @@ load_data <- function(filename="ebtrk_atlc_1988_2015.txt", ...){
                          na = "-99");
   return(ext_tracks);
 }
+
+#' Clean Data
+#'
+#' This is a function that takes the output of \code{load_data()} (above) in a 
+#' tibble format, creates a new column called \code{storm_id} where \code{storm_name} 
+#' and \code{year} are merged with a hyphen (ex: "KATRINA-2005"). A second column is
+#' also created, \code{date}, that reformats the month, day, year, and hour data from
+#' the original data to have one ymd_hms formatted column. The data is then gathered
+#' by the 4 directions x 3 windspeeds. The key of this is then separated to retrieve
+#' \code{windspeed}, \code{radius}, and \code{direction}. The \code{direction} is then
+#' spread into 4 columns, one for each direction. The \code{longitude} is mutated to
+#' be negative and account for the western hemisphere. Finally, specific columns
+#' are selected for the output tibble. 
+#'
+#' @param raw.data tibble output of \code{load_data()}
+#' 
+#' @return This function returns a tibble that contains the columns \code{storm_id},
+#' \code{date},\code{latitude}, \code{longitude}, \code{wind_speed}, \code{ne},
+#' \code{nw}, \code{se}, \code{sw}
+#' 
+#' @importFrom magrittr %>%
+#' @importFrom dplyr mutate select
+#' @importFrom tidyr gather separate spread 
+#' @importFrom lubridate parse_date_time
+#'
+#' @examples
+#' clean_data(raw.data)
+#'
+#' @export
 clean_data <- function(raw.data, ...){
   data <- raw.data %>%  
     mutate(storm_id=paste0(storm_name,"-",year), 
@@ -42,7 +91,8 @@ clean_data <- function(raw.data, ...){
   return(data)
 }
 
-load_data2 <- function(filename="ebtrk_atlc_1988_2015.txt", ...){
+
+#load_data2 <- function(filename="ebtrk_atlc_1988_2015.txt", ...){
   
   raw.data <- readr::read_table(file = filename, col_names = FALSE);
   colnames <- c("storm_id", "storm_name", "mdH", "year", "latitude", "longitude", "max_wind_speed", 
@@ -52,7 +102,7 @@ load_data2 <- function(filename="ebtrk_atlc_1988_2015.txt", ...){
   colnames(raw.data) <- colnames;
   return(raw.data);
 }
-clean_data2 <- function(raw.data, ...){
+#clean_data2 <- function(raw.data, ...){
   data <- raw.data %>%  
     mutate(storm_id=paste0(storm_name,"-",year), 
            date = lubridate::parse_date_time(paste0(mdH,year), 'mdHy')) %>% 
@@ -65,13 +115,51 @@ clean_data2 <- function(raw.data, ...){
   return(data)
 }
 
+#' Select Hurricane Data
+#'
+#' This is a function that takes the output of \code{clean_data()} (above) in a 
+#' tibble format and filters by \code{storm_name} and \code{date} such that the 
+#' output is specifically related to one date and time. 
+#'
+#' @param data tibble output of \code{clean_data()}
+#' 
+#' @return This function returns a tibble contains \code{storm_name} and 
+#' \code{date} such that the output is specifically related to one date and time.
+#' 
+#' @importFrom magrittr %>%
+#' @importFrom dplyr filter
+#' @importFrom lubridate parse_date_time
+#'
+#' @examples
+#' select_hurricane(data)
+#' select_hurricane(data, storm_date='KATRINA-2005', date_time = '2005290812')
+#' @export
+
 select_hurricane <- function(data, storm_date='KATRINA-2005', date_time = '2005290812', ...){  
   hurricane <- data %>% filter(storm_id == storm_date, date == lubridate::ydm_h(date_time))
   return(hurricane);
 }
 
 
-#build geom here#
+#' Geom Function for Hurricane Data
+#'
+#' This function uses GeomHurricane to create a geom function to be used
+#' to layer the GeomHurricane image onto a base plot or map 
+#'
+#' @return Geom Hurricane layer 
+#'
+#' @examples
+#' map_data <- get_map("Louisiana", zoom = 6, maptype = "toner-background")
+#' base_map <- ggmap(map_data, extent = "device")
+#' 
+#' base_map +
+#'   geom_hurricane(data = hurricane, aes(x = longitude, y = latitude,
+#'                                        r_ne = ne, r_se = se,
+#'                                        r_nw = nw, r_sw = sw,
+#'                                        fill = wind_speed,
+#'                                        color = wind_speed))
+#'
+#' @export
 geom_hurricane <- function(mapping = NULL, data = NULL, stat = "identity",
                            position = "identity", na.rm = FALSE,
                            show.legend = NA, inherit.aes = TRUE, ...){
@@ -83,6 +171,29 @@ geom_hurricane <- function(mapping = NULL, data = NULL, stat = "identity",
   )
 }
 
+#' ggproto function for hurricane
+#'
+#' This is the creation of a ggproto object to create 4 quadrants of colored
+#' images of the NE, NW, SE, and SW winds. 
+#'    
+#' @import ggplot2
+#' @import grid
+#' @import geosphere 
+#' 
+#' @return Geom including the image to be lyared
+#'
+#' @examples
+#' map_data <- get_map("Louisiana", zoom = 6, maptype = "toner-background")
+#' base_map <- ggmap(map_data, extent = "device")
+#' 
+#' base_map +
+#'   geom_hurricane(data = hurricane, aes(x = longitude, y = latitude,
+#'                                        r_ne = ne, r_se = se,
+#'                                        r_nw = nw, r_sw = sw,
+#'                                        fill = wind_speed,
+#'                                        color = wind_speed))
+#'
+#' @export
 GeomHurricane <- ggproto("GeomHurricane", Geom,
                          required_aes = c("x", "y", 
                                           "r_ne", "r_se", "r_sw", "r_nw"),
