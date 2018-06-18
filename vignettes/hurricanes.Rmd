@@ -1,7 +1,7 @@
 ---
-title: "Vignette Title"
-author: "Vignette Author"
-date: "`r Sys.Date()`"
+title: "Hurricanes Vignette"
+author: "Swetha Garimalla"
+date: "June 17, 2018"
 output: rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{Vignette Title}
@@ -9,57 +9,55 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
-```{r setup, include = FALSE}
-knitr::opts_chunk$set(
-  collapse = TRUE,
-  comment = "#>"
-)
+
+
+##Load Data
+
+Load data from [RAMMB: The Tropical Cyclone Extended Best Track Dataset][via](http://rammb.cira.colostate.edu/research/tropical_cyclones/tc_extended_best_track_dataset/).
+
+```{r, echo=FALSE, eval=FALSE}
+raw.data <- load_data(filename = "ebtrk_atlc_1988_2015.txt") 
+raw.data
 ```
 
-Vignettes are long form documentation commonly included in packages. Because they are part of the distribution of the package, they need to be as compact as possible. The `html_vignette` output type provides a custom style sheet (and tweaks some options) to ensure that the resulting html is as small as possible. The `html_vignette` format:
+## Clean Data
 
-- Never uses retina figures
-- Has a smaller default figure size
-- Uses a custom CSS stylesheet instead of the default Twitter Bootstrap style
+This is a function that takes the output of \code{load_data()} (above) in a 
+tibble format, 
+1) creates a new column called \code{storm_id} where \code{storm_name} 
+and \code{year} are merged with a hyphen (ex: "KATRINA-2005"). 
+2) A second column is also created, \code{date}, that reformats the month, day, year, and hour data from the original data to have one ymd_hms formatted column. 
+3) The data is then gathered by the 4 directions x 3 windspeeds. 
+4) The key of this is then separated to retrieve \code{windspeed}, \code{radius}, and \code{direction}. 
+5) The \code{direction} is then spread into 4 columns, one for each direction. 
+6) The \code{longitude} is mutated to be negative and account for the western hemisphere. 
+7) Finally, specific columns are selected for the output tibble. This function returns a tibble that contains the columns \code{storm_id}, \code{date}, \code{latitude}, \code{longitude}, \code{wind_speed}, \code{ne}, \code{nw}, \code{se}, \code{sw}
+```{r, echo=FALSE, eval=FALSE}
+data <- load_data(filename = "ebtrk_atlc_1988_2015.txt") %>% clean_data()
+data
+```
+## Select Data
+This is a function that takes the output of \code{clean_data()} (above) in a  tibble format and filters by \code{storm_name} and \code{date} such that the output is specifically related to one date and time. 
 
-## Vignette Info
-
-Note the various macros within the `vignette` section of the metadata block above. These are required in order to instruct R how to build the vignette. Note that you should change the `title` field and the `\VignetteIndexEntry` to match the title of your vignette.
-
-## Styles
-
-The `html_vignette` template includes a basic CSS theme. To override this theme you can specify your own CSS in the document metadata as follows:
-
-    output: 
-      rmarkdown::html_vignette:
-        css: mystyles.css
-
-## Figures
-
-The figure sizes have been customised so that you can easily put two images side-by-side. 
-
-```{r, fig.show='hold'}
-plot(1:10)
-plot(10:1)
+```{r, echo=FALSE, eval=FALSE}
+data <- load_data(filename = "ebtrk_atlc_1988_2015.txt") 
+        %>% clean_data() %>% select_data()
+data
 ```
 
-You can enable figure captions by `fig_caption: yes` in YAML:
+## Create Hurricane Geom Plot
+This is a function takes the output of \code{select_data} above and produces an image
+which is three circles overlayed, each split into 4 quadrants. 
 
-    output:
-      rmarkdown::html_vignette:
-        fig_caption: yes
+```{r, echo=FALSE, eval=FALSE}
+map_data <- get_map("Louisiana", zoom = 6, maptype = "toner-background")
+base_map <- ggmap(map_data, extent = "device")
 
-Then you can use the chunk option `fig.cap = "Your figure caption."` in **knitr**.
-
-## More Examples
-
-You can write math expressions, e.g. $Y = X\beta + \epsilon$, footnotes^[A footnote here.], and tables, e.g. using `knitr::kable()`.
-
-```{r, echo=FALSE, results='asis'}
-knitr::kable(head(mtcars, 10))
+base_map +
+  geom_hurricane(data = hurricane, aes(x = longitude, y = latitude,
+                                       r_ne = ne, r_se = se,
+                                       r_nw = nw, r_sw = sw,
+                                       fill = wind_speed,
+                                       color = wind_speed))
 ```
 
-Also a quote using `>`:
-
-> "He who gives up [code] safety for [code] speed deserves neither."
-([via](https://twitter.com/hadleywickham/status/504368538874703872))
