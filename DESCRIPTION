@@ -11,9 +11,11 @@ LazyData: true
 RoxygenNote: 6.0.1.9000
 Imports:
     dplyr (>= 0.7.5),
+    ggplot2 (>= 2.2.1),
+    ggmap (>= 2.7.900),
+    grid (>= 3.5.0),
     mapdata (>= 2.2-6),
     magrittr (>= 1.5),
-    maps (>= 3.1.1),
     readr (>= 1.1.1), 
     tidyr (>= 0.8.1),
     tibble (>= 1.4.2)
